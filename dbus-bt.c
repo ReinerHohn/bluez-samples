@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdio.h>
 //#include <cl_dbus_bluetooth.h>
 //#include <cl_delegate.h>
 #include <glib.h>
@@ -26,13 +27,14 @@ void fwbluez_free_adapters(GList* adapters);
 
 void init_bt()
 {
+	printf("init_bt\n");
 	context = g_main_context_new();
 		
 	if (context)
 	{
 		loop = g_main_loop_new(context,FALSE);
 	}
-
+	printf("get sync\n");
 	dbus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
 	fwcl_bt_register_hooks(loop, context, dbus);
@@ -56,8 +58,11 @@ GList* fwbluez_list_adapters(GError** error)
 {
 	GList* result = NULL;
 	GList* l;
+
+	printf("get_objects\n");
 	GList* temp = g_dbus_object_manager_get_objects(fwbluez_object_manager);
 
+	printf("list adapters\n");
 	for (l = temp; l != NULL; l = l->next)
 	{
 		GDBusInterface* iface = g_dbus_object_get_interface((GDBusObject*)l->data, "org.bluez.Adapter1");
@@ -102,13 +107,16 @@ void fwcl_bt_register_hooks(void* loop, void* context, void* dbus)
 		return;
 	}
 
+	printf("register hooks\n");
 	GList* adapters = fwbluez_list_adapters(NULL);
 
 	if (adapters)
 	{
 		_adapter = g_object_ref(adapters->data);
 		//g_signal_connect(_adapter, "notify::discovering", G_CALLBACK(_on_adapter_property_change), NULL);
+		printf("Set discoverable\n");
 		fwbluez_adapter1_set_discoverable( _adapter, TRUE );
+		gboolean discoverable = fwbluez_adapter1_get_discoverable( _adapter );
 
 		fwbluez_free_adapters(adapters);
 	}

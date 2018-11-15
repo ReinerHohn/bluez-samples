@@ -4,12 +4,16 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
+#include "dbus-bt.h" 
+
 int main (int argc, char** argv)
 {
     struct sockaddr_rc loc_addr = { 0 } , rem_addr = { 0 } ;
     char buf [1024] = { 0 } ;
     int s, client, bytes_read ;
     unsigned int opt = sizeof (rem_addr);
+
+    init_bt();
 
     // allocate socket
     s = socket (AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
