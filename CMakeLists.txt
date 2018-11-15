@@ -36,7 +36,7 @@ target_include_directories (bluezlib PUBLIC ${PROJECT_BINARY_DIR})
 target_include_directories (bluezlib PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(bluezlib PRIVATE -W -Wall -Wextra -Wno-unused-parameter)
 
-target_link_libraries(server ${BLUEZ_LIBRARIES} {DBUS_X_LIBRARIES} bluezlib pthread pcre)
+target_link_libraries(server ${BLUEZ_LIBRARIES} ${DBUS_X_LIBRARIES} bluezlib pthread pcre)
 target_include_directories(server PUBLIC ${BLUEZ_INCLUDE_DIRS} ${DBUS_X_INCLUDE_DIRS})
 target_compile_options(server PUBLIC ${BLUEZ_CFLAGS_OTHER} ${DBUS_X_CFLAGS_OTHER})
 

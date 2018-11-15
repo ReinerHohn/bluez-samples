@@ -18,10 +18,11 @@ GMainContext* context;
 GMainLoop* loop;
 GDBusConnection* dbus;
 
-static FWBluezAgent1* _agent;
+//static FWBluezAgent1* _agent;
 static FWBluezAdapter1* _adapter;
 
 void fwcl_bt_register_hooks(void* loop, void* context, void* dbus);
+void fwbluez_free_adapters(GList* adapters);
 
 void init_bt()
 {
@@ -79,15 +80,16 @@ GList* fwbluez_list_adapters(GError** error)
 	return result;
 }
 
-static gboolean _bt_agent_func(const char* device, FWBluezRequestType type, gchar** pincode, guint* passkey, void* user_data)
+void fwbluez_free_adapters(GList* adapters)
 {
-	//TODO: implement
-	(void)device;
-	(void)type;
-	(void)pincode;
-	(void)passkey;
-	(void)user_data;
-	return FALSE;
+	GList* l;
+
+	for (l = adapters; l != NULL; l = l->next)
+	{
+		g_object_unref(l->data);
+	}
+
+	g_list_free(adapters);
 }
 
 void fwcl_bt_register_hooks(void* loop, void* context, void* dbus)
@@ -111,6 +113,6 @@ void fwcl_bt_register_hooks(void* loop, void* context, void* dbus)
 		fwbluez_free_adapters(adapters);
 	}
 
-	_agent = fwbluez_agent_new(dbus, "/com/hgs/bt5agent", _bt_agent_func, NULL, NULL);
+	//_agent = fwbluez_agent_new(dbus, "/com/hgs/bt5agent", _bt_agent_func, NULL, NULL);
 	//_bt_enable(dbus);
 }
