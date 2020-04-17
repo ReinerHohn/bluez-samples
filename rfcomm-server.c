@@ -8,6 +8,8 @@
 
 #include "dbus-bt.h" 
 
+#include "common.h"
+
 int s, client;
 
 static void catch_function(int signo)
@@ -22,7 +24,8 @@ static void catch_function(int signo)
 int main (int argc, char** argv)
 {
     struct sockaddr_rc loc_addr = { 0 } , rem_addr = { 0 } ;
-    char buf [1024] = { 0 } ;
+    char buf [BUF_SIZE] = { 0 } ;
+    static const long bufsize = sizeof (buf)/sizeof(char);
     int bytes_read ;
     unsigned int opt = sizeof (rem_addr);
 
