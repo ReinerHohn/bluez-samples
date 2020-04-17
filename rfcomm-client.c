@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include <sys/time.h>
 
 #include "common.h"
 
@@ -54,72 +55,80 @@ int main (int argc, char** argv)
     {
 	// allocate a socket
 	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+	if ( -1 != s )
+	{
+		// set the connection parameters (who to connect to)
+		addr.rc_family = AF_BLUETOOTH;
+		addr.rc_channel = 1;
+		fprintf(stderr, "%s\n", argv[1]);
+		str2ba(argv[1], &addr.rc_bdaddr);
 
-	// set the connection parameters (who to connect to)
-	addr.rc_family = AF_BLUETOOTH;
-	addr.rc_channel = 1;
-	fprintf(stderr, "%s\n", argv[1]);
-	str2ba(argv[1], &addr.rc_bdaddr);
+		// connect to server
+		status = connect(s, (struct sockaddr*)&addr, sizeof(addr));
+		// send a message
+		if (0 == status)
+		{
+			struct timeval tv;
+			tv.tv_sec = 10;
+			tv.tv_usec = 0;
+			setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
-	// connect to server
-	status = connect(s, (struct sockaddr*)&addr, sizeof(addr));
+			while( 1 )
+			{
+			    read_index = 0;
+			    read_length = 0;
+			    bytes_write = PACKAGE_SIZE;
 
-	struct timeval tv;
-        tv.tv_sec = 10;
-        tv.tv_usec = 0;
-        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+			    read_length = (sizeof(buf) - read_index)/2;
+			    // fputs("ivor send\n", stderr);
+			    status = send(s, buffer, bytes_write, 0);
+			    if (status < 0) perror ("uh oh");
 
-        while( 1 )
-        {
-            read_index = 0;
-            read_length = 0;
-            bytes_write = PACKAGE_SIZE;
-
-            read_length = (sizeof(buf) - read_index)/2;
-	    // fputs("ivor send\n", stderr);
-            status = send(s, buffer, bytes_write, 0);
-	    if (status < 0) perror ("uh oh");
-
-	    bytes_read = recv(s, buf + read_index, read_length, 0);
-            fprintf(stderr, "bytes_read %ld\n", bytes_read);
-            if( 0 < bytes_read )
-            {
-                read_index = read_index + bytes_read;
-            }
-	    else
-	    {
-                    fprintf(stderr, "TIMEOUT\n");
-	    }
-            while (0 < bytes_read)
-            {
-                bytes_read = 0;
-                read_length = sizeof(buf) - read_index;
-                if ( read_length > 0)
-                {
-                    bytes_read = recv(s, buf + read_index, read_length, 0);
-                    fprintf(stderr, "bytes_read %ld\n", bytes_read);
-                    if( 0 < bytes_read )
-                    {
-                        read_index = read_index + bytes_read;
-                    }
-                }
-                else
-                {
-                    if ( bytes_write != read_index )
-                    {
-                         fprintf(stderr, "Read write length ummatch bytes_write: %ld, bytes_read %ld\n", bytes_write, bytes_read);
-                    }
-                    if ( 0 != memcmp(buffer, buf, read_index))
-                    {
-                        fprintf(stderr, "Buffer ummatch\n");
-                    }
-                    printf("received [%s]\n", buf);
-                    memset(buf, 0, bufsize);
-                }
-            }
+			    bytes_read = recv(s, buf + read_index, read_length, 0);
+			    fprintf(stderr, "bytes_read %ld\n", bytes_read);
+			    if( 0 < bytes_read )
+			    {
+				read_index = read_index + bytes_read;
+			    }
+			    else
+			    {
+				    fprintf(stderr, "TIMEOUT\n");
+			    }
+			    while (0 < bytes_read)
+			    {
+				bytes_read = 0;
+				read_length = sizeof(buf) - read_index;
+				if ( read_length > 0)
+				{
+				    bytes_read = recv(s, buf + read_index, read_length, 0);
+				    fprintf(stderr, "bytes_read %ld\n", bytes_read);
+				    if( 0 < bytes_read )
+				    {
+					read_index = read_index + bytes_read;
+				    }
+				}
+				else
+				{
+				    if ( bytes_write != read_index )
+				    {
+					 fprintf(stderr, "Read write length ummatch bytes_write: %ld, bytes_read %ld\n", bytes_write, bytes_read);
+				    }
+				    if ( 0 != memcmp(buffer, buf, read_index))
+				    {
+					fprintf(stderr, "Buffer ummatch\n");
+				    }
+				    printf("received [%s]\n", buf);
+				    memset(buf, 0, bufsize);
+				}
+			    }
+			}
+		}
+		close(s);
 	}
-
-	close(s);
+	else
+	{
+		perror("Failed to open socket\n");
+	}
 	return 0;
    }
    else
