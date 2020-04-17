@@ -26,7 +26,8 @@ int main (int argc, char** argv)
     struct sockaddr_rc loc_addr = { 0 } , rem_addr = { 0 } ;
     char buf [BUF_SIZE] = { 0 } ;
     static const long bufsize = sizeof (buf)/sizeof(char);
-    int bytes_read ;
+    int bytes_read;
+    int status;
     unsigned int opt = sizeof (rem_addr);
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
@@ -61,12 +62,21 @@ int main (int argc, char** argv)
     fprintf(stderr, "accepted connection from %s\n", buf);
     memset ( buf ,0, sizeof ( buf));
 
-    // read data from the client
-    bytes_read = recv(client, buf, sizeof(buf), 0);
-    if (bytes_read > 0) {
-        printf("received [%s]\n", buf);
+    while(1)
+    {
+        //fprintf(stderr, "read data from the client\n");
+        bytes_read = recv(client, buf, sizeof(buf), 0);
+        if (bytes_read > 0)
+        {
+            fprintf(stderr, "received [%s]\n", buf);
+            //status = send(client, buf, bytes_read, 0);
+        }
+        else
+        {
+            //fprintf(stderr, "no bytes received \n");
+            perror("Error receving bytes:");
+        }
     }
-
     // close connection
     close(client);
     close(s);
