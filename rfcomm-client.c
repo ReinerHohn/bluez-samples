@@ -1,14 +1,37 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
+int s;
+
+static void catch_function(int signo)
+{
+    puts("Interactive attention signal caught.");
+    close(s);
+
+    exit(1);
+}
+
 int main (int argc, char** argv)
 {
     struct sockaddr_rc addr = { 0 } ;
-    int s, status;
-    char dest[18] = "B8:27:EB:60:49:B1";
+    int status;
+    char dest[18] = "B8:27:EB:7D:19:FA";
+
+    if (signal(SIGINT, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        //return EXIT_FAILURE;
+    }
+    if (signal(SIGKILL, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        //return EXIT_FAILURE;
+    }
 
     // allocate a socket
     s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
