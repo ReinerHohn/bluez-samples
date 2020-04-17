@@ -32,7 +32,7 @@ int main (int argc, char** argv)
     char buf [BUF_SIZE] = { 0 } ;
     static const long bufsize = sizeof (buf)/sizeof(char);
     bytes_write = bufsize;
-    printf(stderr, "bufsize %ld\n");
+    fputs("bufsize %ld\n", stderr);
 
     if ( argc < 2 )
     {
@@ -64,12 +64,17 @@ int main (int argc, char** argv)
 	// connect to server
 	status = connect(s, (struct sockaddr*)&addr, sizeof(addr));
 
-	// send a message
-	if (0 == status) {
-	    status = send(s, "hello!", 6, 0);
-	}
+        while( 1 )
+        {
+            read_index = 0;
+            read_length = 0;
+            bytes_write = 6;
 
-	if (status < 0) perror ("uh oh");
+            read_length = (sizeof(buf) - read_index)/2;
+	    // fputs("ivor send\n", stderr);
+            status = send(s, buffer, bytes_write, 0);
+	    if (status < 0) perror ("uh oh");
+	}
 
 	close(s);
 	return 0;
