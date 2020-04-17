@@ -69,7 +69,7 @@ int main (int argc, char** argv)
         if (bytes_read > 0)
         {
             fprintf(stderr, "received [%s]\n", buf);
-            //status = send(client, buf, bytes_read, 0);
+            status = send(client, buf, bytes_read, 0);
         }
         else
         {
