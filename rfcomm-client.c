@@ -20,8 +20,12 @@ int main (int argc, char** argv)
 {
     struct sockaddr_rc addr = { 0 } ;
     int status;
-    char dest[18] = "B8:27:EB:7D:19:FA";
 
+    if ( argc < 2 )
+    {
+        printf("Usage: client <bdaddr>");
+        return 1;
+    }
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
         fputs("An error occurred while setting a signal handler.\n", stderr);
@@ -39,7 +43,8 @@ int main (int argc, char** argv)
     // set the connection parameters (who to connect to)
     addr.rc_family = AF_BLUETOOTH;
     addr.rc_channel = 1;
-    str2ba(dest, &addr.rc_bdaddr);
+    fprintf(stderr, "%s\n", argv[1]);
+    str2ba(argv[1], &addr.rc_bdaddr);
 
     // connect to server
     status = connect(s, (struct sockaddr*)&addr, sizeof(addr));
