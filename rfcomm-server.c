@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
@@ -6,12 +8,34 @@
 
 #include "dbus-bt.h" 
 
+int s, client;
+
+static void catch_function(int signo)
+{
+    puts("Interactive attention signal caught.");
+    close(client);
+    close(s);
+
+    exit(1);
+}
+
 int main (int argc, char** argv)
 {
     struct sockaddr_rc loc_addr = { 0 } , rem_addr = { 0 } ;
     char buf [1024] = { 0 } ;
-    int s, client, bytes_read ;
+    int bytes_read ;
     unsigned int opt = sizeof (rem_addr);
+
+    if (signal(SIGINT, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        //return EXIT_FAILURE;
+    }
+    if (signal(SIGKILL, catch_function) == SIG_ERR)
+    {
+        fputs("An error occurred while setting a signal handler.\n", stderr);
+        //return EXIT_FAILURE;
+    }
 
     init_bt();
 
