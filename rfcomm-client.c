@@ -24,16 +24,13 @@ int main (int argc, char** argv)
 {
     struct sockaddr_rc addr = { 0 } ;
     int status;
-    long size = 0;
+    long transfer_size = 0;
     long bytes_read = 0;
-    long bytes_write = 0;
+    long write_length = 0;
+    long read_length = 0;
     long read_index = 0;
-    int read_length = 0;
+    long write_index = 0;
 
-    char buf [BUF_SIZE] = { 0 } ;
-    static const long bufsize = sizeof (buf)/sizeof(char);
-    bytes_write = bufsize;
-    fputs("bufsize %ld\n", stderr);
 
     if ( argc < 2 )
     {
@@ -50,9 +47,11 @@ int main (int argc, char** argv)
         fputs("An error occurred while setting a signal handler.\n", stderr);
         //return EXIT_FAILURE;
     }
-    char* buffer = readFileInBuffer("/opt/hgs/file.txt", &size);
-    if ( buffer )
+    char* buffer_send = readFileInBuffer("/opt/hgs/file.txt", &transfer_size);
+    if ( buffer_send )
     {
+	char* buffer_recv = malloc(transfer_size + 1);
+
 	// allocate a socket
 	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if ( -1 != s )
@@ -75,58 +74,58 @@ int main (int argc, char** argv)
 
 			struct timeval st, et;
 
-			while( 1 )
+			write_index = 0;
+			read_index = 0;
+			read_length = PACKAGE_SIZE;
+
+			while( write_index < transfer_size )
 			{
-			    read_index = 0;
-			    read_length = 0;
-			    bytes_write = PACKAGE_SIZE;
+				gettimeofday(&st,NULL);
+				write_length = ( transfer_size - write_index) > PACKAGE_SIZE ? PACKAGE_SIZE : transfer_size - write_index;
+				fprintf(stderr, "Transferring %ld / %ld \n", write_index, transfer_size);
+				status = send(s, buffer_send + write_index, write_length, 0);
+				gettimeofday(&et,NULL);
+				int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
+				double speed = (((double)write_length)/((double)elapsed));
+				fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, write_length, speed);
+				if (status < 0)
+				{
+				    perror ("uh oh");
+				    break;
+				}
+				write_index += write_length;
 
-			    read_length = (sizeof(buf) - read_index)/2;
-			    gettimeofday(&st,NULL);
-			    status = send(s, buffer, bytes_write, 0);
-			    gettimeofday(&et,NULL);
-			    int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
-			    double speed = (((double)bytes_write)/((double)elapsed));
-			    fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, bytes_write, speed);
-			    if (status < 0) perror ("uh oh");
-
-			    bytes_read = recv(s, buf + read_index, read_length, 0);
-			    fprintf(stderr, "bytes_read %ld\n", bytes_read);
-			    if( 0 < bytes_read )
-			    {
-				read_index = read_index + bytes_read;
-			    }
-			    else
-			    {
-				    fprintf(stderr, "TIMEOUT\n");
-			    }
-			    while (0 < bytes_read)
-			    {
 				bytes_read = 0;
-				read_length = sizeof(buf) - read_index;
-				if ( read_length > 0)
+				int bytes_read_temp = 0;
+				read_length = ( transfer_size - read_index) > PACKAGE_SIZE ? PACKAGE_SIZE : transfer_size - read_index;
+				while ( bytes_read < read_length )
 				{
-				    bytes_read = recv(s, buf + read_index, read_length, 0);
-				    fprintf(stderr, "bytes_read %ld\n", bytes_read);
-				    if( 0 < bytes_read )
-				    {
-					read_index = read_index + bytes_read;
-				    }
+					fprintf(stderr, "waiting for  %ld bytes \n", read_length - bytes_read);
+					bytes_read_temp = recv(s, buffer_recv + read_index, read_length, 0);
+					fprintf(stderr, "bytes_read %ld\n", bytes_read_temp);
+					if( bytes_read_temp <= 0 )
+					{
+					    if ( read_index == 0 )
+					    {
+						return bytes_read_temp;
+					    }
+					    break;
+					    fprintf(stderr, "TIMEOUT\n");
+					}
+
+					read_index += bytes_read_temp;
+					bytes_read += bytes_read_temp;
 				}
-				else
+				if ( write_index != read_index )
 				{
-				    if ( bytes_write != read_index )
-				    {
-					 fprintf(stderr, "Read write length ummatch bytes_write: %ld, bytes_read %ld\n", bytes_write, bytes_read);
-				    }
-				    if ( 0 != memcmp(buffer, buf, read_index))
-				    {
-					fprintf(stderr, "Buffer ummatch\n");
-				    }
-				    printf("received [%s]\n", buf);
-				    memset(buf, 0, bufsize);
+				     fprintf(stderr, "Read write length ummatch write_length: %ld, bytes_read %ld\n", write_length, bytes_read);
 				}
-			    }
+				if ( 0 != memcmp(buffer_send + write_index, buffer_recv + read_index, read_length))
+				{
+				    fprintf(stderr, "Buffer ummatch\n");
+				}
+				printf("received [%s]\n", buffer_recv);
+				//memset(buffer_recv, 0, bufsize);
 			}
 		}
 		close(s);
