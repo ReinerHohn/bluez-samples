@@ -21,8 +21,8 @@ pkg_check_modules(GIO REQUIRED gio-2.0 gio-unix-2.0)
 #message("Dbus:" ${DBUS_X_INCLUDE_DIRS})
 #message("Bluez:" ${BLUEZ_INCLUDE_DIRS})
 
-add_executable(server rfcomm-server.c dbus-bt.c)
-add_executable(client rfcomm-client.c)
+add_executable(server common.h common.c rfcomm-server.c dbus-bt.c)
+add_executable(client common.h common.c rfcomm-client.c)
 
 add_library( bluezlib
 	${CMAKE_CURRENT_BINARY_DIR}/bluez.c
@@ -43,3 +43,9 @@ target_compile_options(server PUBLIC ${BLUEZ_CFLAGS_OTHER} ${DBUS_X_CFLAGS_OTHER
 target_link_libraries(client ${BLUEZ_LIBRARIES})
 target_include_directories(client PUBLIC ${BLUEZ_INCLUDE_DIRS})
 target_compile_options(client PUBLIC ${BLUEZ_CFLAGS_OTHER})
+
+# Install target for qtcreator debugging
+set(CMAKE_INSTALL_PREFIX "/opt/hgs")
+
+install(TARGETS server RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/)
+install(TARGETS client RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/)
