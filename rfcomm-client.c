@@ -73,6 +73,8 @@ int main (int argc, char** argv)
 			tv.tv_usec = 0;
 			setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
+			struct timeval st, et;
+
 			while( 1 )
 			{
 			    read_index = 0;
@@ -80,8 +82,12 @@ int main (int argc, char** argv)
 			    bytes_write = PACKAGE_SIZE;
 
 			    read_length = (sizeof(buf) - read_index)/2;
-			    // fputs("ivor send\n", stderr);
+			    gettimeofday(&st,NULL);
 			    status = send(s, buffer, bytes_write, 0);
+			    gettimeofday(&et,NULL);
+			    int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
+			    double speed = (((double)bytes_write)/((double)elapsed));
+			    fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, bytes_write, speed);
 			    if (status < 0) perror ("uh oh");
 
 			    bytes_read = recv(s, buf + read_index, read_length, 0);
