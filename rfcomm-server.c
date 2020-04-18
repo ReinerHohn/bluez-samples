@@ -24,9 +24,8 @@ static void catch_function(int signo)
 int main (int argc, char** argv)
 {
     struct sockaddr_rc loc_addr = { 0 } , rem_addr = { 0 } ;
-    char buf [BUF_SIZE] = { 0 } ;
-    static const long bufsize = sizeof (buf)/sizeof(char);
-    int bytes_read;
+    char buffer_recv [BUF_SIZE] = { 0 } ;
+    static const long bufsize = BUF_SIZE; //sizeof (buf)/sizeof(char);
     int status;
     unsigned int opt = sizeof (rem_addr);
 
@@ -58,19 +57,61 @@ int main (int argc, char** argv)
     // accept one connection
     client = accept(s, (struct sockaddr *)&rem_addr, &opt);
 
-    ba2str(&rem_addr.rc_bdaddr, buf);
-    fprintf(stderr, "accepted connection from %s\n", buf);
-    memset ( buf ,0, sizeof ( buf));
+    ba2str(&rem_addr.rc_bdaddr, buffer_recv);
+    fprintf(stderr, "accepted connection from %s\n", buffer_recv);
+    memset ( buffer_recv, 0, sizeof ( buffer_recv));
+
+    remove("out.bin");
+    FILE* pFile;
+    pFile = fopen("out.bin", "ab");
+    if( pFile )
+    { 
+	    fprintf(stderr, "Opened file\n");
+    }
+    else
+    {
+	    fprintf(stderr, "Failed to open file\n");
+    }
+    
+    long transfer_size = 0;
+    long bytes_read = 0;
+    long write_length = 0;
+    long read_length = 0;
+    long read_index = 0;
+    long write_index = 0;
 
     while(1)
     {
         //fprintf(stderr, "read data from the client\n");
-        bytes_read = recv(client, buf, sizeof(buf), 0);
+	bytes_read = 0;
+        int bytes_read_temp = 0;
+        read_length = PACKAGE_SIZE; //( transfer_size - read_index) > PACKAGE_SIZE ? PACKAGE_SIZE : transfer_size - read_index;
+        while ( bytes_read < read_length )
+        {
+                fprintf(stderr, "waiting for  %ld bytes \n", read_length - bytes_read);
+                //bytes_read_temp = recv(client, buffer_recv + read_index, read_length, 0);
+                bytes_read_temp = recv(client, buffer_recv, read_length, 0);
+                fprintf(stderr, "bytes_read %ld\n", bytes_read_temp);
+                if( bytes_read_temp <= 0 )
+                {
+                    if ( read_index == 0 )
+                    {
+                        return bytes_read_temp;
+                    }
+                    break;
+                    fprintf(stderr, "TIMEOUT\n");
+                }
+
+                read_index += bytes_read_temp;
+                bytes_read += bytes_read_temp;
+        }
+	
         if (bytes_read > 0)
         {
-            fprintf(stderr, "sending %ld bytes\n", bytes_read);
-            status = send(client, buf, bytes_read, 0);
-            fprintf(stderr, "sent %ld bytes\n", bytes_read);
+		fwrite(buffer_recv, sizeof(char), bytes_read, pFile);
+    		fprintf(stderr, "sending %ld bytes\n", bytes_read);
+        	status = send(client, buffer_recv, bytes_read, 0);
+        	fprintf(stderr, "sent %ld bytes\n", bytes_read);
         }
         else
         {
