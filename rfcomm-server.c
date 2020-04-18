@@ -68,8 +68,9 @@ int main (int argc, char** argv)
         bytes_read = recv(client, buf, sizeof(buf), 0);
         if (bytes_read > 0)
         {
-            fprintf(stderr, "received [%s]\n", buf);
+            fprintf(stderr, "sending %ld bytes\n", bytes_read);
             status = send(client, buf, bytes_read, 0);
+            fprintf(stderr, "sent %ld bytes\n", bytes_read);
         }
         else
         {
