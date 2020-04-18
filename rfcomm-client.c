@@ -120,11 +120,13 @@ int main (int argc, char** argv)
 				{
 				     fprintf(stderr, "Read write length ummatch write_length: %ld, bytes_read %ld\n", write_length, bytes_read);
 				}
-				if ( 0 != memcmp(buffer_send + write_index, buffer_recv + read_index, read_length))
+				int res =  memcmp(buffer_send + write_index, buffer_recv + read_index, read_length);
+				if ( res != 0 )
 				{
-				    fprintf(stderr, "Buffer ummatch\n");
+				    //fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
+				    //fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
 				}
-				printf("received [%s]\n", buffer_recv);
+				//printf("received %s\n", buffer_recv);
 				//memset(buffer_recv, 0, bufsize);
 			}
 		}
