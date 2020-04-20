@@ -71,7 +71,7 @@ int getRfcommSocket(char* bdaddr)
 }
 #include <stdio.h>
 
-int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* filename, long packageSizeSend, long packageSizeRecv)
+int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* filename, long packageSizeSend, long packageSizeRecv, char* protocol)
 {
     long bytes_read = 0;
     long write_length = 0;
@@ -157,7 +157,7 @@ int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* 
     gettimeofday(&et,NULL);
     int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 
-    sprintf(data, "Transferred:%ld: bytes in :%d: s at package size from:%ld package size to: so %f kbit/s\n", transfer_size, elapsed/ 1000000, packageSizeRecv, packageSizeSend, ((double)transfer_size/(double)elapsed)*1000);
+    sprintf(data, "Transferred:%ld: bytes in :%d:s packSizeRecv:%ld: packSizeSend:%ld: speed:%f: kB/s, protocol:%s:\n", transfer_size, elapsed/ 1000000, packageSizeRecv, packageSizeSend, ((double)transfer_size/(double)elapsed)*1000, protocol);
     fwrite(data, sizeof(char), strlen(data), pFile); //sizeof(data)/sizeof (char)
     fprintf(stderr, "%s\n", data);
     fclose(pFile);
@@ -218,9 +218,9 @@ int main (int argc, char** argv)
             //for(int packageSize = 512; packageSize < 4096; packageSize++)
             {
                 //sprintf(filename, "outfile%d", packageSize);
-                sendRecFile(buffer_send, buffer_recv, transfer_size, "outfile", packageSizeSend, packageSizeRecv);
+                sendRecFile(buffer_send, buffer_recv, transfer_size, "outfile", packageSizeSend, packageSizeRecv, argv[4]);
             }
-		}
+	}
         else
         {
             perror( "Could not connect\n" );
