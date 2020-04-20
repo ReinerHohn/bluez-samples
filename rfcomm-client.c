@@ -46,7 +46,6 @@ int getl2CapSocket(char* bdaddr, uint16_t mtu)
 }
 int getRfcommSocket(char* bdaddr)
 {
-
     int fd_sock_rfcomm;
     struct sockaddr_rc addr_rfcomm = { 0 };
 
@@ -72,7 +71,7 @@ int getRfcommSocket(char* bdaddr)
 }
 #include <stdio.h>
 
-int sendRecFile(char* buffer_send, long transfer_size, char* filename, long packageSize)
+int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* filename, long packageSizeSend, long packageSizeRecv)
 {
     long bytes_read = 0;
     long write_length = 0;
@@ -80,7 +79,6 @@ int sendRecFile(char* buffer_send, long transfer_size, char* filename, long pack
     long read_index = 0;
     long write_index = 0;
 
-    char* buffer_recv = malloc(transfer_size + 1);
     struct timeval st, et;
 
     char data[1024];
@@ -97,15 +95,15 @@ int sendRecFile(char* buffer_send, long transfer_size, char* filename, long pack
     }
     write_index = 0;
     read_index = 0;
-    read_length = packageSize;
+    read_length = packageSizeRecv;
 
     gettimeofday(&st,NULL);
-    fprintf(stderr, "Transferring %ld bytes at package size %ld\n", transfer_size, packageSize);
+    fprintf(stderr, "Transferring %ld bytes at package size send:%ld, package size recv:%ld\n", transfer_size, packageSizeSend, packageSizeRecv);
     while( write_index < transfer_size )
     {
         //gettimeofday(&st,NULL);
-        write_length = ( transfer_size - write_index) > packageSize ? packageSize : transfer_size - write_index;
-        //fprintf(stderr, "Transferring %ld / %ld \n", write_index, transfer_size);
+        write_length = ( transfer_size - write_index) > packageSizeSend ? packageSizeSend : transfer_size - write_index;
+        //fprintf(stderr, "Transferring %ld / %ld \n", writegg_index, transfer_size);
         g_status = send(g_socket, buffer_send + write_index, write_length, 0);
         /*gettimeofday(&et,NULL);
         int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);*/
@@ -123,7 +121,7 @@ int sendRecFile(char* buffer_send, long transfer_size, char* filename, long pack
 #if 1//READ_BACK
         bytes_read = 0;
         int bytes_read_temp = 0;
-        read_length = ( transfer_size - read_index) > packageSize ? packageSize : transfer_size - read_index;
+        read_length = ( transfer_size - read_index) > packageSizeRecv ? packageSizeRecv : transfer_size - read_index;
         while ( bytes_read < read_length )
         {
             //fprintf(stderr, "waiting for  %ld bytes \n", read_length - bytes_read);
@@ -159,24 +157,27 @@ int sendRecFile(char* buffer_send, long transfer_size, char* filename, long pack
     gettimeofday(&et,NULL);
     int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 
-    sprintf(data, "Transferred:%ld: bytes in :%d: s at package size :%ld: so %f kbit/s\n", transfer_size, elapsed/ 1000000, packageSize, ((double)transfer_size/(double)elapsed)*1000);
+    sprintf(data, "Transferred:%ld: bytes in :%d: s at package size from:%ld package size to: so %f kbit/s\n", transfer_size, elapsed/ 1000000, packageSizeRecv, packageSizeSend, ((double)transfer_size/(double)elapsed)*1000);
     fwrite(data, sizeof(char), strlen(data), pFile); //sizeof(data)/sizeof (char)
     fprintf(stderr, "%s\n", data);
     fclose(pFile);
-    free(buffer_recv);
+    aligned_free(buffer_recv);
+    aligned_free(buffer_send);
+
 }
 
 int main (int argc, char** argv)
 {
     long transfer_size = 0;
-    if ( argc < 3 )
+    if ( argc < 4 )
     {
-        printf("Usage: client <bdaddr> <package_size>");
+        printf("Usage: client <bdaddr> <package_size_send> <package_size_recv> <protocol>");
         return 1;
     }
     char filename[50];
     char* p;
-    long packageSize = strtol(argv[2], &p, 10);
+    long packageSizeSend = strtol(argv[2], &p, 10);
+    long packageSizeRecv = strtol(argv[3], &p, 10);
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
@@ -191,24 +192,33 @@ int main (int argc, char** argv)
     char* buffer_send = readFileInBuffer("/opt/hgs/file.txt", &transfer_size);
     if ( buffer_send )
     {
-
-#if defined USE_L2CAP
-         g_socket = getl2CapSocket(argv[1], packageSize);
-#else
-         g_socket = getRfcommSocket(argv[1]);
-#endif
-		// send a message
+    	char* buffer_recv = aligned_malloc(ALIGN_SIZE, transfer_size + 1);
+	if ( 0 == strncmp("l2cap", argv[4], strlen("l2cap") ) )
+	{
+  		long transSize = packageSizeRecv > packageSizeSend ? packageSizeRecv : packageSizeSend;
+     		g_socket = getl2CapSocket(argv[1], transSize);
+	}
+	else if ( 0 == strncmp("rfcomm", argv[4], strlen("rfcomm") ) )
+	{
+		g_socket = getRfcommSocket(argv[1]);
+	}
+	else
+	{
+		fprintf(stderr, "No valid protocol\n");
+	}
+	fprintf(stderr, "Using protocol %s\n", argv[4]);
+	// send a message
         if (0 == g_status)
-		{
-			struct timeval tv;
-            tv.tv_sec = 1;
-			tv.tv_usec = 0;
-            setsockopt(g_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+	{
+		struct timeval tv;
+        	tv.tv_sec = 1;
+		tv.tv_usec = 0;
+        	setsockopt(g_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
             //for(int packageSize = 512; packageSize < 4096; packageSize++)
             {
                 //sprintf(filename, "outfile%d", packageSize);
-                sendRecFile(buffer_send, transfer_size, "outfile", packageSize);
+                sendRecFile(buffer_send, buffer_recv, transfer_size, "outfile", packageSizeSend, packageSizeRecv);
             }
 		}
         else
@@ -236,7 +246,7 @@ char* readFileInBuffer(char* filename, long* psize)
         *psize = fsize;
         fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
 
-        string = malloc(fsize + 1);
+        string = aligned_malloc(ALIGN_SIZE, fsize + 1);
         fread(string, 1, fsize, f);
         fclose(f);
 
