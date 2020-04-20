@@ -1,12 +1,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define PACKAGE_SIZE 1008
 #define BUF_SIZE 32768
-
-#define USE_L2CAP 1
-//#define L2CAP_MTU PACKAGE_SIZE
+#define ALIGN_SIZE 64
 
 int set_l2cap_mtu( int sock, uint16_t mtu ) ;
+void aligned_free(void * ptr);
+void * aligned_malloc(size_t align, size_t size);
 
 #endif // COMMON_H
