@@ -76,17 +76,22 @@ int getl2CapSocket(uint16_t mtu)
 }
 int main (int argc, char** argv)
 {
-    char buffer_recv [BUF_SIZE] = { 0 } ;
+    char *buffer_recv;
+    char *buffer_send;
     static const long bufsize = BUF_SIZE; //sizeof (buf)/sizeof(char);
     int status;
 
-    if ( argc < 2 )
+    if ( argc < 4 )
     {
-        printf("Usage: client <package_size>");
+        printf("Usage: client <package_size_recv> <package_size_send> <protocol>");
         return 1;
     }
     char* p;
-    long packageSize = strtol(argv[1], &p, 10);
+    long packageSizeRecv = strtol(argv[1], &p, 10);
+    long packageSizeSend = strtol(argv[2], &p, 10);
+
+    buffer_recv = aligned_malloc(ALIGN_SIZE, packageSizeRecv);
+    buffer_send = aligned_malloc(ALIGN_SIZE, packageSizeSend);
 
     if (signal(SIGINT, catch_function) == SIG_ERR)
     {
@@ -100,8 +105,9 @@ int main (int argc, char** argv)
     }
 
     init_bt();
-    memset ( buffer_recv, 0, sizeof ( buffer_recv));
+    //memset ( buffer_recv, 0, sizeof ( buffer_recv));
 
+    /*
     remove("out.bin");
     FILE* pFile;
     pFile = fopen("out.bin", "ab");
@@ -113,11 +119,23 @@ int main (int argc, char** argv)
     {
 	    fprintf(stderr, "Failed to open file\n");
     }
-#if defined USE_L2CAP
-    client = getl2CapSocket(packageSize);
-#else
-    client = getRfcommSocket();
-#endif
+    */
+    if ( 0 == strncmp("l2cap", argv[3], strlen("l2cap") ) )
+    {
+	long transSize = packageSizeRecv > packageSizeSend ? packageSizeRecv : packageSizeSend;
+	fprintf(stderr, "Using l2cap mtu %ld\n", transSize);
+	client = getl2CapSocket(transSize);
+    }
+    else if ( 0 == strncmp("rfcomm", argv[3], strlen("rfcomm") ) )
+    {
+    	client = getRfcommSocket();
+    }
+    else
+    {
+	fprintf(stderr, "No valid protocol\n");
+    }
+    fprintf(stderr, "Using protocol %s\n", argv[3]);
+
 
     long transfer_size = 0;
     long bytes_read = 0;
@@ -130,13 +148,13 @@ int main (int argc, char** argv)
     FD_ZERO(&read_sd);
     FD_SET(client, &read_sd);
     //int packageSize = 512;
-    fprintf(stderr, "Working with paket size %ld\n", packageSize);
+    fprintf(stderr, "Working with paketSizeFrom%ld, packetSizeTo\n", packageSizeRecv, packageSizeSend);
     while(1)
     {
 
         bytes_read = 0;
         int bytes_read_temp = 0;
-        read_length = packageSize; //( transfer_size - read_index) > packageSize ? packageSize : transfer_size - read_index;
+        read_length = packageSizeRecv; //( transfer_size - read_index) > packageSize ? packageSize : transfer_size - read_index;
 
         while ( bytes_read < read_length )
         {
@@ -173,22 +191,24 @@ int main (int argc, char** argv)
                 break;
             }
         }
-        if (bytes_read > 0)
+        if ( packageSizeSend > 0)
         {
             //fwrite(buffer_recv, sizeof(char), bytes_read, pFile);
             //printf(stderr, "sending %ld bytes\n", bytes_read);
-            status = send(client, buffer_recv, bytes_read, 0);
+            status = send(client, buffer_send, packageSizeSend, 0);
             //fprintf(stderr, "sent %ld bytes\n", bytes_read);
         }
         else
         {
             //fprintf(stderr, "no bytes received \n");
-            perror("Error receving bytes:");
+            //perror("Error receving bytes:");
         }
     }
 
 
     // close connection
+    aligned_free(buffer_recv);
+    aligned_free(buffer_send);
     close(client);
     close(fd_sock_rfcomm);
     return 0;

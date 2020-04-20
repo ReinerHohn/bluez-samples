@@ -46,6 +46,7 @@ target_compile_options(client PUBLIC ${BLUEZ_CFLAGS_OTHER})
 
 # Install target for qtcreator debugging
 set(CMAKE_INSTALL_PREFIX "/opt/hgs")
+set(CMAKE_BUILD_TYPE "Debug")
 
 install(TARGETS server RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/)
 install(TARGETS client RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/)
