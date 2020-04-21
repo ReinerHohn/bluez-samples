@@ -71,7 +71,7 @@ int getRfcommSocket(char* bdaddr)
 }
 #include <stdio.h>
 
-int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* filename, long packageSizeSend, long packageSizeRecv, char* protocol, int latency_test)
+int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* filename, long packageSizeSend, long packageSizeRecv, char* protocol, int latency_test, int repeats)
 {
 	long bytes_read = 0;
 	long write_length = 0;
@@ -95,8 +95,6 @@ int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* 
 	{
 		fprintf(stderr, "Failed to open file\n");
 	}
-	write_index = 0;
-	read_index = 0;
 	read_length = packageSizeRecv;
 
 	// In latency test, set transfer size to one packet size!
@@ -105,106 +103,113 @@ int sendRecFile(char* buffer_send, char* buffer_recv, long transfer_size, char* 
 		transfer_size = packageSizeSend > packageSizeRecv ? packageSizeSend : packageSizeRecv;
 	}
 
-	gettimeofday(&st,NULL);
-	fprintf(stderr, "Transferring %ld bytes at package size send:%ld, package size recv:%ld\n", transfer_size, packageSizeSend, packageSizeRecv);
-	while( write_index < transfer_size )
+	for( int i = 0; i < repeats; i++)
 	{
-		if( latency_test ) 
-		{
-			gettimeofday(&st_lat,NULL);
-		}
-		write_length = ( transfer_size - write_index) > packageSizeSend ? packageSizeSend : transfer_size - write_index;
-		//fprintf(stderr, "Transferring %ld / %ld \n", writegg_index, transfer_size);
-		g_status = send(g_socket, buffer_send + write_index, write_length, 0);
-		/*gettimeofday(&et,NULL);
-		  int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);*/
-		//double speed = (((double)write_length)/((double)elapsed));
-		//speedsum += speed;
-		//fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, write_length, speed);
-		//fprintf(stderr, "%f MB/s av\n",speedsum/counter);
-		//counter++;
-		if (g_status < 0)
-		{
-			perror ("uh oh");
-			break;
-		}
-		write_index += write_length;
-#if 1//READ_BACK
-		bytes_read = 0;
-		int bytes_read_temp = 0;
-		read_length = ( transfer_size - read_index) > packageSizeRecv ? packageSizeRecv : transfer_size - read_index;
-		while ( bytes_read < read_length )
-		{
-			//fprintf(stderr, "waiting for  %ld bytes \n", read_length - bytes_read);
-			bytes_read_temp = recv(g_socket, buffer_recv + read_index, read_length, 0);
-			//fprintf(stderr, "bytes_read %ld\n", bytes_read_temp);
-			if( bytes_read_temp <= 0 )
-			{
-				if ( read_index == 0 )
-				{
-					return bytes_read_temp;
-				}
-				break;
-				fprintf(stderr, "TIMEOUT\n");
-			}
+		write_index = 0;
+		read_index = 0;
 
-			read_index += bytes_read_temp;
-			bytes_read += bytes_read_temp;
-		}
-		if( latency_test )
+		fprintf(stderr, "Transferring %ld bytes at package size send:%ld, package size recv:%ld\n", transfer_size, packageSizeSend, packageSizeRecv);
+		gettimeofday(&st,NULL);
+		while( write_index < transfer_size )
 		{
-			gettimeofday(&et_lat,NULL);
-			double elapsed = ((et_lat.tv_sec - st_lat.tv_sec) * 1000000) + (et_lat.tv_usec - st_lat.tv_usec);
-			latent_sum += elapsed;
-			latent_count++;
+			if( latency_test ) 
+			{
+				gettimeofday(&st_lat,NULL);
+			}
+			write_length = ( transfer_size - write_index) > packageSizeSend ? packageSizeSend : transfer_size - write_index;
+			//fprintf(stderr, "Transferring %ld / %ld \n", writegg_index, transfer_size);
+			g_status = send(g_socket, buffer_send + write_index, write_length, 0);
+			/*gettimeofday(&et,NULL);
+			  int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);*/
 			//double speed = (((double)write_length)/((double)elapsed));
 			//speedsum += speed;
 			//fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, write_length, speed);
 			//fprintf(stderr, "%f MB/s av\n",speedsum/counter);
 			//counter++;
+			if (g_status < 0)
+			{
+				perror ("uh oh");
+				break;
+			}
+			write_index += write_length;
+#if 1//READ_BACK
+			bytes_read = 0;
+			int bytes_read_temp = 0;
+			read_length = ( transfer_size - read_index) > packageSizeRecv ? packageSizeRecv : transfer_size - read_index;
+			while ( bytes_read < read_length )
+			{
+				//fprintf(stderr, "waiting for  %ld bytes \n", read_length - bytes_read);
+				bytes_read_temp = recv(g_socket, buffer_recv + read_index, read_length, 0);
+				//fprintf(stderr, "bytes_read %ld\n", bytes_read_temp);
+				if( bytes_read_temp <= 0 )
+				{
+					if ( read_index == 0 )
+					{
+						return bytes_read_temp;
+					}
+					break;
+					fprintf(stderr, "TIMEOUT\n");
+				}
 
-		}
+				read_index += bytes_read_temp;
+				bytes_read += bytes_read_temp;
+			}
+			if( latency_test )
+			{
+				gettimeofday(&et_lat,NULL);
+				double elapsed = ((et_lat.tv_sec - st_lat.tv_sec) * 1000000) + (et_lat.tv_usec - st_lat.tv_usec);
+				latent_sum += elapsed;
+				latent_count++;
+				//double speed = (((double)write_length)/((double)elapsed));
+				//speedsum += speed;
+				//fprintf(stderr, "%d:usec:%ld:bytes, %f MB/s\n",elapsed, write_length, speed);
+				//fprintf(stderr, "%f MB/s av\n",speedsum/counter);
+				//counter++;
 
-		if ( write_index != read_index )
-		{
-			//fprintf(stderr, "Read write length ummatch write_length: %ld, bytes_read %ld\n", write_length, bytes_read);
-		}
-		//int res =  memcmp(buffer_send + write_index, buffer_recv + read_index, read_length);
-		//if ( res != 0 )
-		{
-			//fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
-			//fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
-		}
-		//printf("received %s\n", buffer_recv);
-		//memset(buffer_recv, 0, bufsize);
+			}
+
+			if ( write_index != read_index )
+			{
+				//fprintf(stderr, "Read write length ummatch write_length: %ld, bytes_read %ld\n", write_length, bytes_read);
+			}
+			//int res =  memcmp(buffer_send + write_index, buffer_recv + read_index, read_length);
+			//if ( res != 0 )
+			{
+				//fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
+				//fprintf(stderr, "Buffer ummatch %d, write_index %d, read_index %d, %s %s \n", res, write_index, read_index, buffer_send + write_index, buffer_recv + read_index);
+			}
+			//printf("received %s\n", buffer_recv);
+			//memset(buffer_recv, 0, bufsize);
 #endif
+		}
 	}
+
 	gettimeofday(&et,NULL);
 	double avg_lat = (latent_sum / latent_count)/(double)1000000;
 	int elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 	double speed = ((double)transfer_size/(double)elapsed)*1000;
-	sprintf(data, "Trans:%ld: bytes in :%d:s packSRecv:%ld: packSend:%ld: speed:%f: kB/s, latency:%f:,prot:%s:\n", transfer_size, elapsed/ 1000000, packageSizeRecv, packageSizeSend, speed, avg_lat, protocol);
+	sprintf(data, "Trans:%ld: bytes in :%d:s packSRecv:%ld: packSend:%ld: speed:%f: kB/s, latency:%f:,prot:%s:repeats:%d:\n", transfer_size, elapsed/ 1000000, packageSizeRecv, packageSizeSend, speed, avg_lat, protocol, repeats);
 	fwrite(data, sizeof(char), strlen(data), pFile); //sizeof(data)/sizeof (char)
 	fprintf(stderr, "%s\n", data);
 	fclose(pFile);
 	aligned_free(buffer_recv);
 	aligned_free(buffer_send);
-
 }
 
 int main (int argc, char** argv)
 {
 	long transfer_size = 0;
-	if ( argc < 5 )
+	if ( argc < 7 )
 	{
-		printf("Usage: client <bdaddr> <package_size_send> <package_size_recv> <protocol> <latency_test>");
+		printf("Usage: client <bdaddr> <package_size_send> <package_size_recv> <protocol> <latency_test> <repeats>");
 		return 1;
 	}
 	char filename[50];
 	char* p;
 	long packageSizeSend = strtol(argv[2], &p, 10);
 	long packageSizeRecv = strtol(argv[3], &p, 10);
-	int latency_test = strtol(argv[5], &p, 10);
+	long latency_test = strtol(argv[5], &p, 10);
+	long repeats = strtol(argv[6], &p, 10);
 
 	if (signal(SIGINT, catch_function) == SIG_ERR)
 	{
@@ -245,7 +250,7 @@ int main (int argc, char** argv)
 			//for(int packageSize = 512; packageSize < 4096; packageSize++)
 			{
 				//sprintf(filename, "outfile%d", packageSize);
-				sendRecFile(buffer_send, buffer_recv, transfer_size, "outfile", packageSizeSend, packageSizeRecv, argv[4], latency_test);
+				sendRecFile(buffer_send, buffer_recv, transfer_size, "outfile", packageSizeSend, packageSizeRecv, argv[4], latency_test, repeats);
 			}
 		}
 		else
