@@ -174,12 +174,13 @@ int main (int argc, char** argv)
                 //fprintf(stderr, "bytes_read %ld\n", bytes_read_temp);
                 if( bytes_read_temp <= 0 )
                 {
+                    fprintf(stderr, "TIMEOUT\n");
                     if ( read_index == 0 )
                     {
                         return bytes_read_temp;
                     }
+			return 0;
                     break;
-                    fprintf(stderr, "TIMEOUT\n");
                 }
 
                 read_index += bytes_read_temp;
